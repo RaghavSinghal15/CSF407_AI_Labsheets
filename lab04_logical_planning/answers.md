@@ -94,33 +94,23 @@ Prolog reflection questions
 
 Extra task - three rooms and a key
 
-The robot starts in A, the key is in A and the door between B and C is locked. The goal is to reach C. The only connections are A-B and B-C, so there is no direct move from A to C. Moving back along these connections is allowed. The key stays with the robot after unlocking, and the door stays open.
+Initially the robot and key are in A, and the B-C door is locked. Goal: reach C. Only A-B and B-C are connected; there is no direct A-C move. The robot can move back, keeps the key after use, and the door stays open.
 
-The initial state is {At(Robot,A), At(Key,A), DoorLocked(B,C)}. The goal is {At(Robot,C)}. Each action costs one step.
+Initial state: {At(Robot,A), At(Key,A), DoorLocked(B,C)}.
+Goal: At(Robot,C).
 
-Actions and their conditions:
+Actions:
 
-- PickUp(Key,A): the robot and key must both be in A, and the robot must not already hold the key. It adds Holding(Key) and removes At(Key,A). It fails if the robot is elsewhere or the key is missing.
-- Move(A,B) and Move(B,A): the robot must be in the starting room. A move removes the old robot position and adds the new one. The B-C door does not affect these moves.
-- Unlock(B,C): the robot must be in B, hold the key and have a locked door to open. It adds DoorOpen(B,C) and removes DoorLocked(B,C). Without the key or from the wrong room, this action fails.
-- Move(B,C) and Move(C,B): the robot must be in the starting room and DoorOpen(B,C) must hold. Crossing while the door is locked is not allowed. The move changes only the robot's position.
+- PickUp(Key,A): needs robot and key in A, without already holding it. Adds Holding(Key), removes At(Key,A).
+- Move(X,Y): needs the robot at X and a connection to Y. B-C and C-B also need the door open. Removes the old position and adds the new one.
+- Unlock(B,C): needs robot in B, Holding(Key) and the locked door. Removes DoorLocked(B,C), adds DoorOpen(B,C).
 
-Move(A,C) is not an action in this problem because those rooms are not directly connected. The key cannot open a new route; it only opens the existing B-C door.
+Plan: pick up key in A -> move A to B -> unlock -> move B to C. Four actions, each costing one step.
 
-The plan is PickUp(Key,A), Move(A,B), Unlock(B,C), Move(B,C).
+After pickup the robot is in A holding the key. After moving it is in B with the door still locked. Unlocking opens the door, then moving to C satisfies the goal.
 
-Initially: At(Robot,A), At(Key,A), DoorLocked(B,C).
-After pickup: At(Robot,A), Holding(Key), DoorLocked(B,C).
-After moving to B: At(Robot,B), Holding(Key), DoorLocked(B,C).
-After unlocking: At(Robot,B), Holding(Key), DoorOpen(B,C).
-After moving to C: At(Robot,C), Holding(Key), DoorOpen(B,C).
+Failure cases: cannot unlock without the key or from another room; cannot cross B-C while locked; cannot move directly A-C. Going to B without picking up is recoverable by returning to A.
 
-The final state satisfies the goal. Four actions are necessary: one pickup, two moves and one unlock. Going to B without the key does not make the whole problem impossible if returning to A is allowed, but the robot must go back to collect it before it can unlock the door.
+Code: `rooms_key.py`, using BFS from `planner.py`. Run `python rooms_key.py`. It found the four-action plan. Missing key or removing unlock gave no plan.
 
-`rooms_key.py` uses the same Action representation and BFS from `planner.py`. It prints the plan and state after each step. Run it with `python rooms_key.py` from the logic folder. The original problem gives the four-action plan above. If the key is missing, or the unlock action is removed, it reports no plan. If the B-C connection were removed, unlocking alone would also be insufficient to reach C.
-
-The Prolog version is included in `planner.pl`. A state is written as room_state(Room,KeyStatus,DoorStatus). The key status is on_floor or held, and the door is locked or open. Unlike the earlier simple connection queries, these rules check the key and door state while replaying actions.
-
-`check_room_plan([pick_up_key,move(a,b),unlock,move(b,c)], room_state(a,on_floor,locked), room_state(c,held,open)).` gives true.
-
-Trying `[move(a,b),unlock,move(b,c)]` fails because the robot has no key. Trying `[pick_up_key,move(a,b),move(b,c)]` fails because the door is still locked. Trying `[move(a,c)]` also fails because there is no direct connection.
+Prolog checks are in `planner.pl`. The full plan query returned true. Plans skipping pickup, skipping unlock or moving directly A-C returned false.
